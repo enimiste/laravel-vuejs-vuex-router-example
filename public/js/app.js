@@ -7669,8 +7669,23 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 
 
 var state = {
-    search: { query: '', results: [] },
-    auth: { loggedIn: false, user: { email: '', name: '' }, token: '' },
+    search: {
+        query: '',
+        results: []
+    },
+    auth: {
+        loggedIn: false,
+        user: {
+            email: '',
+            name: ''
+        },
+        oauth: {
+            token_type: 'Bearer',
+            expires_in: 0,
+            token: '',
+            refresh_token: ''
+        }
+    },
     students: { items: [] }
 };
 
@@ -7690,13 +7705,26 @@ var mutations = (_mutations = {}, _defineProperty(_mutations, SEARCH_RESULT_RECE
 
     state.search = { query: query, results: results };
 }), _defineProperty(_mutations, USER_LOGGED_OUT, function (state) {
-    state.auth = { loggedIn: false, user: { email: '', name: '', token: '' } };
+    state.auth = {
+        loggedIn: false,
+        user: {
+            email: '',
+            name: ''
+        },
+        oauth: {
+            token_type: 'Bearer',
+            expires_in: 0,
+            token: '',
+            refresh_token: ''
+        }
+    };
 }), _defineProperty(_mutations, USER_LOGGED_IN, function (state, _ref2) {
     var email = _ref2.email,
         name = _ref2.name,
-        token = _ref2.token;
+        oauth = _ref2.oauth;
 
-    state.auth = { loggedIn: true, user: { email: email, name: name, token: token } };
+    state.auth = { loggedIn: true, user: { email: email, name: name, oauth: oauth } };
+    axios.defaults.headers.common['Authorization'] = 'Bearer ' + oauth.token;
 }), _defineProperty(_mutations, STUDENTS_LIST_RECEIVED, function (state, _ref3) {
     var items = _ref3.items;
 
@@ -7730,14 +7758,33 @@ var actions = (_actions = {}, _defineProperty(_actions, DO_LOGOUT, function (_re
     var commit = _ref8.commit;
 
     commit(USER_LOGGED_OUT);
+    localStorage.removeItem('user');
 }), _defineProperty(_actions, DO_LOGIN, function (_ref9, _ref10) {
     var commit = _ref9.commit;
     var email = _ref10.email,
         password = _ref10.password;
 
-    var token = __WEBPACK_IMPORTED_MODULE_1_randomstring___default.a.generate(50);
-    commit(USER_LOGGED_IN, { name: 'NOUNI', email: email, token: token });
-    Vue.$http.defaults.headers.common['Authorisation'] = 'Bearer ' + token;
+    return axios.post('/oauth/token', {
+        grant_type: 'password',
+        client_id: 2,
+        client_secret: 'vOKQp5B7c0I0Np8xxlbB5uJHMXbnJRYktDoOCgla',
+        username: email,
+        password: password,
+        scope: ''
+    }).then(function (res) {
+        var user = {
+            name: 'NOUNI',
+            email: email,
+            oauth: {
+                token_type: res.data.token_type,
+                expires_in: res.data.expires_in,
+                token: res.data.access_token,
+                refresh_token: res.data.refresh_token
+            }
+        };
+        commit(USER_LOGGED_IN, user);
+        localStorage.setItem('user', JSON.stringify(user));
+    });
 }), _defineProperty(_actions, DO_SEARCH, function (_ref11, _ref12) {
     var commit = _ref11.commit;
     var query = _ref12.query;
@@ -7748,8 +7795,8 @@ var actions = (_actions = {}, _defineProperty(_actions, DO_LOGOUT, function (_re
     var limit = _ref14.limit,
         page = _ref14.page;
 
-    Vue.$http.get('/api/v1/students').then(function (res) {
-        commit(STUDENTS_LIST_RECEIVED, { items: res.data.data });
+    return axios.get('/api/v1/students').then(function (res) {
+        commit(STUDENTS_LIST_RECEIVED, { items: res.data });
     });
 }), _actions);
 
@@ -17610,10 +17657,17 @@ var store = __webpack_require__(16).default;
 Vue.store = store;
 
 var app = new Vue({
-  router: router,
-  store: store,
-  el: '#app',
-  template: '<router-view/>'
+    router: router,
+    store: store,
+    el: '#app',
+    template: '<router-view/>',
+    mounted: function mounted() {
+        var user = localStorage.getItem('user');
+        if (user !== undefined && user !== null) {
+            user = JSON.parse(user);
+            Vue.store.commit('USER_LOGGED_IN', user);
+        }
+    }
 });
 
 /***/ }),
@@ -17641,12 +17695,13 @@ try {
  */
 window.Vue = __webpack_require__(91);
 
-Vue.$http = window.axios = __webpack_require__(93);
+window.axios = __webpack_require__(93);
 
-Vue.$http.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
-Vue.$http.interceptors.response.use(function (response) {
+axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+axios.interceptors.response.use(function (response) {
     return response;
 }, function (error) {
+    console.error('Intercepted', error);
     if (error.response.status === 401) {
         Vue.router.push({ name: 'login' });
     }
@@ -17662,7 +17717,7 @@ Vue.$http.interceptors.response.use(function (response) {
 var token = document.head.querySelector('meta[name="csrf-token"]');
 
 if (token) {
-    Vue.$http.defaults.headers.common['X-CSRF-TOKEN'] = token.content;
+    axios.defaults.headers.common['X-CSRF-TOKEN'] = token.content;
 } else {
     console.error('CSRF token not found');
 }
@@ -59724,6 +59779,8 @@ if (false) {
 "use strict";
 Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_vue_router__ = __webpack_require__(49);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_vuex__ = __webpack_require__(13);
+
 
 
 var routes = [
@@ -59732,7 +59789,12 @@ var routes = [
     path: '/_/',
     component: __webpack_require__(116),
     beforeEnter: function beforeEnter(to, from, next) {
-        next();
+        console.log('Protected', Vue.store.state.auth.loggedIn);
+        if (Vue.store.state.auth.loggedIn === true) {
+            next();
+        } else {
+            Vue.router.push({ name: 'login' });
+        }
     },
     children: [{
         path: '',
@@ -59769,9 +59831,6 @@ var routes = [
 {
     path: '/',
     component: __webpack_require__(230),
-    beforeEnter: function beforeEnter(to, from, next) {
-        next();
-    },
     children: [{
         path: '',
         name: 'home-public',
@@ -70922,7 +70981,6 @@ var render = function() {
             _vm.authIsLoggedIn
               ? _c(
                   "li",
-                  { staticClass: "active" },
                   [
                     _c("router-link", { attrs: { to: { name: "home" } } }, [
                       _vm._v("Dashboard "),

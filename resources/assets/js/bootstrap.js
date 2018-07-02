@@ -20,12 +20,13 @@ try {
  */
 window.Vue = require('vue');
 
-Vue.$http = window.axios = require('axios');
+window.axios = require('axios');
 
-Vue.$http.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
-Vue.$http.interceptors.response.use(response => {
+axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+axios.interceptors.response.use(response => {
     return response;
 }, error => {
+    console.error('Intercepted', error);
     if (error.response.status === 401) {
         Vue.router.push({name: 'login'})
     }
@@ -41,7 +42,7 @@ Vue.$http.interceptors.response.use(response => {
 let token = document.head.querySelector('meta[name="csrf-token"]');
 
 if (token) {
-    Vue.$http.defaults.headers.common['X-CSRF-TOKEN'] = token.content;
+    axios.defaults.headers.common['X-CSRF-TOKEN'] = token.content;
 } else {
     console.error('CSRF token not found');
 }

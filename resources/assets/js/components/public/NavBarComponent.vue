@@ -16,7 +16,7 @@
             <!-- Collect the nav links, forms, and other content for toggling -->
             <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
                 <ul class="nav navbar-nav">
-                    <li class="active" v-if="authIsLoggedIn">
+                    <li v-if="authIsLoggedIn">
                         <router-link :to="{name: 'home'}">Dashboard <span class="sr-only">(current)</span></router-link>
                     </li>
                     <li class="active">

@@ -1,4 +1,5 @@
 import VueRouter from 'vue-router'
+import {mapGetters} from 'vuex'
 
 const routes = [
     //Protected routes
@@ -6,7 +7,12 @@ const routes = [
         path: '/_/',
         component: require('../components/ProtectedComponent.vue'),
         beforeEnter: (to, from, next) => {
-            next()
+            console.log('Protected', Vue.store.state.auth.loggedIn);
+            if (Vue.store.state.auth.loggedIn === true) {
+                next()
+            } else {
+                Vue.router.push({name: 'login'})
+            }
         },
         children: [
             {
@@ -51,9 +57,6 @@ const routes = [
     {
         path: '/',
         component: require('../components/PublicComponent.vue'),
-        beforeEnter: (to, from, next) => {
-            next()
-        },
         children: [
             {
                 path: '',
@@ -63,7 +66,7 @@ const routes = [
             {
                 path: 'login',
                 name: 'login',
-                component: require('../components/public/LoginComponent.vue')
+                component: require('../components/public/LoginComponent.vue'),
             },
             //Not Found
             {

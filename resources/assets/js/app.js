@@ -29,5 +29,12 @@ const app = new Vue({
     router: router,
     store: store,
     el: '#app',
-    template: '<router-view/>'
+    template: '<router-view/>',
+    mounted() {
+        let user = localStorage.getItem('user')
+        if (user !== undefined && user !== null) {
+            user = JSON.parse(user)
+            Vue.store.commit('USER_LOGGED_IN', user)
+        }
+    }
 });
